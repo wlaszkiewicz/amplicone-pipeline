@@ -1,7 +1,7 @@
 import re
 import matplotlib
 
-from utils import has_size_annotations
+from shared import has_size_annotations
 matplotlib.use("Agg") 
 import matplotlib.pyplot as plt
 

@@ -1,36 +1,36 @@
 import os
+import webbrowser
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QLabel, QLineEdit, QPushButton,
-    QHBoxLayout, QMessageBox, QFileDialog
+    QHBoxLayout, QMessageBox, QFileDialog, QCheckBox
 )
 from PyQt5.QtCore import pyqtSignal
-from vsearch.vsearch_worker import DerepWorker
+from nanoplot_.nanoplot_worker import NanoPlotWorker
 
 
-class DerepSection(QGroupBox):
-    derep_finished = pyqtSignal(str)
+class NanoPlotSection(QGroupBox):
+    nanoplot_finished = pyqtSignal(str)  #  output_dir
 
     def __init__(self, parent=None):
-        super().__init__("4. Dereplication", parent)
+        super().__init__("1. Quality Check (NanoPlot)", parent)
         self._build()
 
     def _build(self):
         layout = QVBoxLayout()
         layout.setSpacing(6)
 
-     
-        lbl = QLabel("Input file (trimmed.fastq.gz):")
-        lbl.setToolTip(
-            "Expected input: trimmed.fastq.gz\n"
-            "Merges strictly identical sequences (same length + nucleotides)."
+        self.input_label = QLabel("Barcode folder:")
+        self.input_label.setToolTip(
+            "Select the folder containing raw .fastq.gz files from your Nanopore run.\n"
+            "NanoPlot will analyze all files and generate a quality report.\n"
+            "Run this BEFORE trimming to understand your raw data quality."
         )
-        layout.addWidget(lbl)
+        layout.addWidget(self.input_label)
         self.input_edit, row = self._path_row(
-            "Auto-filled after trim, or browse...", self._pick_input, folder=False
+            "Select barcode folder...", self._pick_input, folder=True
         )
         layout.addLayout(row)
 
-   
         layout.addWidget(QLabel("Output folder:"))
         self.output_edit, row = self._path_row(
             "Select output folder...", self._pick_output, folder=True
@@ -40,10 +40,10 @@ class DerepSection(QGroupBox):
         self.status_lbl = QLabel("Ready.")
         layout.addWidget(self.status_lbl)
 
-        self.run_btn = QPushButton("Run Derep")
+        self.run_btn = QPushButton("Run NanoPlot")
         self.run_btn.setToolTip(
-            "Merges strictly identical sequences.\n"
-            "Output: derep.fasta — use this as input for clustering."
+            "Generates a quality report for your raw Nanopore reads.\n"
+            "The HTML report will open automatically in your browser when done."
         )
         self.run_btn.clicked.connect(self._run)
         layout.addWidget(self.run_btn)
@@ -63,24 +63,17 @@ class DerepSection(QGroupBox):
         return edit, row
 
     def _pick_input(self):
-        f, _ = QFileDialog.getOpenFileName(
-            self, "Select trimmed.fastq.gz", "", "FASTQ GZ (*.fastq.gz *.gz)"
-        )
-        if f:
-            self.input_edit.setText(f)
+        d = QFileDialog.getExistingDirectory(self, "Select barcode folder")
+        if d:
+            self.input_edit.setText(d)
 
     def _pick_output(self):
         d = QFileDialog.getExistingDirectory(self, "Select output folder")
         if d:
             self.output_edit.setText(d)
 
-    def autofill(self, trimmed_path, output_dir):
-        """Called by main app when trim finishes."""
-        self.input_edit.setText(trimmed_path)
-        self.output_edit.setText(output_dir)
-
-    def get_derep_path(self):
-        return os.path.join(self.output_edit.text().strip(), "derep.fasta")
+    def get_input_path(self):
+        return self.input_edit.text().strip()
 
     def get_output_dir(self):
         return self.output_edit.text().strip()
@@ -89,33 +82,34 @@ class DerepSection(QGroupBox):
         input_path = self.input_edit.text().strip()
         output_dir = self.output_edit.text().strip()
 
-        if not input_path or not os.path.isfile(input_path):
-            QMessageBox.warning(self, "Missing input",
-                "Please select a valid input file.\n"
-                "Expected: trimmed.fastq.gz from the Trim step.")
+        if not input_path or not os.path.isdir(input_path):
+            QMessageBox.warning(self, "Missing input", "Please select a valid barcode folder.")
             return
+
         if not output_dir or not os.path.isdir(output_dir):
             QMessageBox.warning(self, "Missing output", "Please select a valid output folder.")
             return
 
         self.run_btn.setEnabled(False)
-        self.status_lbl.setText("Running dereplication...")
+        self.status_lbl.setText("Starting NanoPlot...")
 
-        self._worker = DerepWorker(input_path, output_dir)
+        self._worker = NanoPlotWorker(input_path, output_dir)
         self._worker.status.connect(self.status_lbl.setText)
         self._worker.finished.connect(self._on_finished)
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
-    def _on_finished(self, output_path):
+    def _on_finished(self, report_path):
         self.run_btn.setEnabled(True)
-        self.status_lbl.setText(f"Done! → {output_path}")
-        QMessageBox.information(self, "Derep done",
-            f"Dereplication complete!\n\nOutput: {output_path}\n\n"
-            "Use derep.fasta as input for clustering.")
-        self.derep_finished.emit(output_path)
+        self.status_lbl.setText(f"Done! → {report_path}")
+        QMessageBox.information(
+            self, "NanoPlot done",
+            f"Quality report ready!\n\n{report_path}\n\nOpening in browser..."
+        )
+        webbrowser.open(f"file://{report_path}")
+        self.nanoplot_finished.emit(self.output_edit.text().strip())
 
     def _on_error(self, msg):
         self.run_btn.setEnabled(True)
         self.status_lbl.setText("Error.")
-        QMessageBox.critical(self, "Derep error", msg)
+        QMessageBox.critical(self, "NanoPlot error", msg)

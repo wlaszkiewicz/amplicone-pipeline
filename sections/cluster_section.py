@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QMessageBox, QFileDialog, QComboBox, QDoubleSpinBox, QSpinBox
 )
 from PyQt5.QtCore import pyqtSignal
-from utils import has_size_annotations
+from shared import has_size_annotations
 from vsearch.vsearch_worker import ClusterWorker
 
 
@@ -13,7 +13,7 @@ class ClusterSection(QGroupBox):
     cluster_finished = pyqtSignal(str, str)  # (clustered_path, cluster_method)
 
     def __init__(self, parent=None):
-        super().__init__("3. Clustering", parent)
+        super().__init__("5. Clustering", parent)
         self._build()
 
     def _build(self):

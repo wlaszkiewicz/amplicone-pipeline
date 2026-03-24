@@ -9,7 +9,7 @@ from vsearch.vsearch_worker import StatsWorker
 
 class StatsSection(QGroupBox):
     def __init__(self, parent=None):
-        super().__init__("5. Stats", parent)
+        super().__init__("Additional Stats", parent)
         self._build()
 
     def _build(self):
@@ -76,7 +76,7 @@ class StatsSection(QGroupBox):
     def _set_buttons(self, enabled):
         self.stats_btn.setEnabled(enabled)
 
-    def _autofill(self, trimmed_path, output_dir):
+    def autofill(self, trimmed_path, output_dir):
         """Called by main app when trim finishes."""
         self.input_edit.setText(trimmed_path)
         self.output_edit.setText(output_dir)

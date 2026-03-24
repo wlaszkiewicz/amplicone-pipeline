@@ -8,12 +8,12 @@ from PyQt5.QtWidgets import (
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from plots.plot_worker import PlotWorker
-from utils import has_size_annotations
+from shared import has_size_annotations
 
 
 class PlotsSection(QGroupBox):
     def __init__(self, parent=None):
-        super().__init__("4. Plots", parent)
+        super().__init__("7. Plots", parent)
         self._build()
 
     def _build(self):
@@ -37,7 +37,6 @@ class PlotsSection(QGroupBox):
             "Select output folder...", self._pick_output, folder=True
         )
         layout.addLayout(row)
-
 
         self.status_lbl = QLabel("Ready.")
         layout.addWidget(self.status_lbl)

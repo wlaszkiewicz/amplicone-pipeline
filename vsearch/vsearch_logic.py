@@ -1,17 +1,9 @@
 import os
 import subprocess
-from utils import has_size_annotations
+from shared import has_size_annotations
 import os
 import pty
 import subprocess
-
-
-# def fastq_gz_to_fasta(fastq_gz_path, fasta_path):
-#     """Convert a .fastq.gz file to a plain .fasta file."""
-#     with gzip.open(fastq_gz_path, "rt") as infile, open(fasta_path, "w") as outfile:
-#         for record in SeqIO.parse(infile, "fastq"):
-#             outfile.write(f">{record.id}\n{str(record.seq)}\n")
-
 
 def run_derep(fastq_path, output_path):
     """Run vsearch dereplication on a fasta file."""
@@ -116,7 +108,6 @@ def run_clustering(fasta_path, output_dir, method='cluster_size', identity=0.97,
         "--lengthout",
     ]
 
-    
     returncode = _stream_stderr_pty(cmd, status_callback)
     if returncode != 0:
         raise RuntimeError("vsearch clustering failed")
