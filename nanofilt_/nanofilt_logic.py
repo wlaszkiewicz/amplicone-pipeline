@@ -4,9 +4,22 @@ import subprocess
 
 def run_nanofilt(input_path, output_dir, min_quality=10, min_length=200,
                  max_length=None, status_callback=None):
-    output_path = os.path.join(output_dir, "filtered.fastq.gz")
 
-    cmd = f"gunzip -c {input_path} | NanoFilt -q {min_quality} -l {min_length}"
+    # derive a clean sample name from the input filename
+    basename = os.path.basename(input_path)
+    for ext in (".fastq.gz", ".fastq", ".gz"):
+        if basename.endswith(ext):
+            basename = basename[: -len(ext)]
+            break
+    output_path = os.path.join(output_dir, f"{basename}_filtered.fastq.gz")
+
+    # support both .fastq.gz and plain .fastq
+    if input_path.endswith(".gz"):
+        decompress = f"gunzip -c {input_path}"
+    else:
+        decompress = f"cat {input_path}"
+
+    cmd = f"{decompress} | NanoFilt -q {min_quality} -l {min_length}"
     if max_length:
         cmd += f" --maxlength {max_length}"
     cmd += f" | gzip > {output_path}"

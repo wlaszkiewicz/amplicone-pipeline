@@ -42,7 +42,10 @@ class DerepSection(QGroupBox):
 
         self.run_btn = QPushButton("Run Derep")
         self.run_btn.setToolTip(
-            "Merges strictly identical sequences.\n"
+            "Merges strictly identical sequences into unique entries.\n"
+            "--strand both: reads and their reverse complements are treated as the same sequence\n"
+            "— no separate orientation step needed.\n"
+            "Accepts .fastq, .fastq.gz files.\n"
             "Output: derep.fasta — use this as input for clustering."
         )
         self.run_btn.clicked.connect(self._run)
@@ -64,7 +67,7 @@ class DerepSection(QGroupBox):
 
     def _pick_input(self):
         f, _ = QFileDialog.getOpenFileName(
-            self, "Select trimmed.fastq.gz", "", "FASTQ GZ (*.fastq.gz *.gz)"
+            self, "Select fastq.gz or fastq files", "", "FASTQ GZ (*.fastq.gz *.gz );;FASTQ (*.fastq)"
         )
         if f:
             self.input_edit.setText(f)
@@ -75,12 +78,18 @@ class DerepSection(QGroupBox):
             self.output_edit.setText(d)
 
     def autofill(self, trimmed_path, output_dir):
-        """Called by main app when trim finishes."""
+        """Called by main app when trim finishes.""" 
         self.input_edit.setText(trimmed_path)
         self.output_edit.setText(output_dir)
 
     def get_derep_path(self):
-        return os.path.join(self.output_edit.text().strip(), "derep.fasta")
+        file_name = self.input_edit.text().strip()
+        base_name = os.path.basename(file_name)
+        barcode_number = base_name.find("barcode") # find the position of "barcode" in the filename
+        if barcode_number != -1:
+            sample_name = base_name[:barcode_number+2] # extract the sample name after "barcode"
+        
+        return os.path.join(self.output_edit.text().strip(), sample_name + "_derep.fasta" if sample_name else "derep.fasta")
 
     def get_output_dir(self):
         return self.output_edit.text().strip()

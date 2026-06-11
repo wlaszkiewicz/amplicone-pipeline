@@ -10,7 +10,6 @@ from sections.stats_section     import StatsSection
 from sections.filter_section    import FilterSection
 import os
 
-
 class TrimmerApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -84,7 +83,6 @@ class TrimmerApp(QWidget):
         output_dir  = os.path.dirname(clustered_path)
         self.plots_sec.autofill(clustered_path, output_dir)
         
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -11,7 +11,7 @@ class NanofiltSection(QGroupBox):
     nanofilt_finished = pyqtSignal(str, str)  # filtered_path, output_dir
 
     def __init__(self, parent=None):
-        super().__init__("3. Quality Filter (Nanofilt)", parent)
+        super().__init__("2. Quality Filter (Nanofilt) [OPTIONAL]", parent)
         self._build()
 
     def _build(self):
@@ -20,13 +20,12 @@ class NanofiltSection(QGroupBox):
 
         input_lbl = QLabel("Input file (trimmed.fastq.gz):")
         input_lbl.setToolTip(
-            "Expected input: trimmed.fastq.gz from the Cutadapt step.\n"
-            "Auto-filled when cutadapt finishes.\n"
-            "Filters reads by minimum quality score and length."
+            "All sequences with quality below 10 (Q10) were already removed so this is optional.\n"
+            "Expected input:.fastq raw from dorado\n"
         )
         layout.addWidget(input_lbl)
         self.input_edit, row = self._path_row(
-            "Auto-filled after cutadapt, or browse...", self._pick_input, folder=False
+            "Browse...", self._pick_input, folder=False
         )
         layout.addLayout(row)
 

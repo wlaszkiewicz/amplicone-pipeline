@@ -3,9 +3,8 @@ import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QLabel, QLineEdit, QPushButton,
     QHBoxLayout, QMessageBox, QFileDialog,
-    QDoubleSpinBox, QDialog
+    QDoubleSpinBox, QDialog, QWidget
 )
-
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from plots.plot_worker import PlotWorker
 from shared import has_size_annotations
@@ -14,6 +13,7 @@ from shared import has_size_annotations
 class PlotsSection(QGroupBox):
     def __init__(self, parent=None):
         super().__init__("7. Plots", parent)
+        self._known_paths = {}
         self._build()
 
     def _build(self):
@@ -22,13 +22,13 @@ class PlotsSection(QGroupBox):
 
         input_lbl = QLabel("Input file:")
         input_lbl.setToolTip(
-            "Accepts .fasta files.\n"
-            "Run plotting on dereped, or clustered output to compare them.\n"
-            "Dont't use on raw trimmed.fastq.gz because it won't have size annotations!"
+            "Accepts .fasta files with size and length annotations.\n"
+            "Use derep.fasta or clustered_sorted.fasta.\n"
+            "Generates 3 plots: length distribution, rank vs abundance, length vs abundance scatter."
         )
         layout.addWidget(input_lbl)
         self.input_edit, row = self._path_row(
-            "Select clustered or dereped .fasta file...", self._pick_input, folder=False
+            "Auto-filled after derep/cluster, or browse...", self._pick_input, folder=False
         )
         layout.addLayout(row)
 
@@ -41,24 +41,24 @@ class PlotsSection(QGroupBox):
         self.status_lbl = QLabel("Ready.")
         layout.addWidget(self.status_lbl)
 
+        # plot button + threshold spinner on same row
         plot_row = QHBoxLayout()
-        self.plot_btn = QPushButton("Plot Length Distribution")
+        self.plot_btn = QPushButton("Generate Plots")
         self.plot_btn.setToolTip(
-            "Plots read length distribution from the selected .fasta file.\n"
-            "Requires size annotations from dereplication step.\n"
-            "Run on derep.fasta to see original distribution, or clustered_sorted.fasta to see how clustering affected it."
+            "Generates 3 plots side by side:\n"
+            "1. Length distribution (weighted by abundance)\n"
+            "2. Cluster rank vs abundance (shows if you have few dominant sequences)\n"
+            "3. Length vs abundance scatter (each dot = one sequence)"
         )
-   
         self.plot_btn.clicked.connect(self._run_plot)
         plot_row.addWidget(self.plot_btn, stretch=1)
 
-        # threshold spinner right-aligned
         right = QHBoxLayout()
         right.addStretch()
         thr_lbl = QLabel("Outlier threshold (%):")
         thr_lbl.setToolTip(
             "Hide lengths whose read count is below this % of total reads.\n"
-            "Higher = more aggressive cropping of sparse edges.\n"
+            "Only affects the length distribution plot.\n"
             "0.0 = show everything."
         )
         self.threshold_spin = QDoubleSpinBox()
@@ -72,17 +72,12 @@ class PlotsSection(QGroupBox):
         right.addWidget(self.threshold_spin)
         right.addStretch()
 
-        right_widget = __import__('PyQt5.QtWidgets', fromlist=['QWidget']).QWidget()
+        right_widget = QWidget()
         right_widget.setLayout(right)
         plot_row.addWidget(right_widget, stretch=1)
         layout.addLayout(plot_row)
 
         self.setLayout(layout)
-
-    def autofill(self, trimmed_path, output_dir):
-        """Called by main app when trim finishes."""
-        self.input_edit.setText(trimmed_path)
-        self.output_edit.setText(output_dir)
 
     def _path_row(self, placeholder, callback, folder=True):
         edit = QLineEdit()
@@ -98,8 +93,7 @@ class PlotsSection(QGroupBox):
 
     def _pick_input(self):
         f, _ = QFileDialog.getOpenFileName(
-            self, "Select input file", "",
-            "FASTA (*.fasta *.fa)"
+            self, "Select input file", "", "FASTA (*.fasta *.fa)"
         )
         if f:
             self.input_edit.setText(f)
@@ -109,34 +103,45 @@ class PlotsSection(QGroupBox):
         if d:
             self.output_edit.setText(d)
 
-    def _set_buttons(self, enabled):
-        self.plot_btn.setEnabled(enabled)
+    def register_path(self, label, path, output_dir=None):
+        """Called by main app to autofill when derep/cluster finishes."""
+        self._known_paths[label] = path
+        self.input_edit.setText(path)
+        if output_dir:
+            self.output_edit.setText(output_dir)
 
     def _run_plot(self):
-        output_dir = self.output_edit.text().strip()
         input_path = self.input_edit.text().strip()
+        output_dir = self.output_edit.text().strip()
 
         if not input_path or not os.path.isfile(input_path):
             QMessageBox.warning(self, "Missing input",
-                "Please select a valid input file.\n"
-                "Make sure to run this on a .fasta file with size annotations!")
+                "Please select a valid .fasta file.\n"
+                "Use derep.fasta or clustered_sorted.fasta.")
             return
         if not output_dir or not os.path.isdir(output_dir):
             QMessageBox.warning(self, "Missing output", "Please select a valid output folder.")
             return
         if not has_size_annotations(input_path):
-            QMessageBox.warning(self, "Are you sure?",
-                "The input file doesn't look like it was dereped first.\n\n"
-                "Please run plotting on derep.fasta or clustered_sorted.fasta instead.")
+            QMessageBox.warning(self, "Missing annotations",
+                "This file doesn't have size/length annotations.\n\n"
+                "Run Dereplication first — derep.fasta and clustered_sorted.fasta both have them.")
             return
 
         self.plot_btn.setEnabled(False)
-        self.status_lbl.setText("Generating plot...")
+        self.status_lbl.setText("Generating plots...")
 
         self._worker = PlotWorker(input_path, round(self.threshold_spin.value(), 2))
         self._worker.finished.connect(self._on_plot_ready)
         self._worker.error.connect(self._on_error)
         self._worker.start()
+
+    def autofill(self, input_path, output_dir):
+        """Called by main app to autofill when derep/cluster finishes."""
+        if input_path:
+            self.input_edit.setText(input_path)
+        if output_dir:
+            self.output_edit.setText(output_dir)
 
     def _on_plot_ready(self, fig):
         self.plot_btn.setEnabled(True)
@@ -144,8 +149,8 @@ class PlotsSection(QGroupBox):
         output_dir = self.output_edit.text().strip()
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Read Length Distribution")
-        dialog.resize(900, 450)
+        dialog.setWindowTitle("Sequence Analysis Plots")
+        dialog.resize(1400, 520)
         dlg_layout = QVBoxLayout()
         canvas = FigureCanvasQTAgg(fig)
         dlg_layout.addWidget(canvas)
@@ -155,9 +160,9 @@ class PlotsSection(QGroupBox):
         close_btn = QPushButton("Close")
 
         def save_plot():
-            out_png = os.path.join(output_dir, "length_distribution.png")
-            fig.savefig(out_png, dpi=150)
-            QMessageBox.information(dialog, "Saved", f"Plot saved to:\n{out_png}")
+            out_png = os.path.join(output_dir, "plots.png")
+            fig.savefig(out_png, dpi=150, bbox_inches="tight")
+            QMessageBox.information(dialog, "Saved", f"Plots saved to:\n{out_png}")
 
         save_btn.clicked.connect(save_plot)
         close_btn.clicked.connect(dialog.accept)
@@ -170,6 +175,6 @@ class PlotsSection(QGroupBox):
         plt.close(fig)
 
     def _on_error(self, msg):
-        self._set_buttons(True)
+        self.plot_btn.setEnabled(True)
         self.status_lbl.setText("Error.")
         QMessageBox.critical(self, "Plot error", msg)

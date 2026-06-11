@@ -27,19 +27,21 @@ def merge_fastq(input_dir, merged_path, status_callback=None):
 
 
 def run_cutadapt(input_path, output_dir, adapter_front, adapter_back,
-                 error_rate=0.15, do_merge=False, status_callback=None):
+                 error_rate=0.15, do_merge=False, sample_name=None, status_callback=None):
     """
     Run cutadapt to trim primers from amplicon Nanopore reads.
-    - Trimmed reads → trimmed.fastq.gz
-    - Reads without primers → untrimmed.fastq.gz
+    - Trimmed reads → <sample>_trimmed.fastq.gz
+    - Reads without primers → <sample>_untrimmed.fastq.gz
+    sample_name: used in output filenames (e.g. gene name or barcode)
     """
+    prefix = f"{sample_name}_" if sample_name else ""
     if do_merge:
         merged_path = os.path.join(output_dir, "merged.fastq.gz")
         input_path = merge_fastq(input_path, merged_path, status_callback)
 
-    output_path    = os.path.join(output_dir, "trimmed.fastq.gz")
-    untrimmed_path = os.path.join(output_dir, "untrimmed.fastq.gz")
-    report_path    = os.path.join(output_dir, "cutadapt_report.txt")
+    output_path    = os.path.join(output_dir, f"{prefix}trimmed.fastq.gz")
+    untrimmed_path = os.path.join(output_dir, f"{prefix}untrimmed.fastq.gz")
+    report_path    = os.path.join(output_dir, f"{prefix}cutadapt_report.txt")
 
     cmd = [
         "cutadapt",

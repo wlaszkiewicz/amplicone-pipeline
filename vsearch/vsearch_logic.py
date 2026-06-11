@@ -6,7 +6,12 @@ import pty
 import subprocess
 
 def run_derep(fastq_path, output_path):
-    """Run vsearch dereplication on a fasta file."""
+    """
+    Run vsearch dereplication.
+    --strand both: forward and reverse-complement of the same sequence
+    are treated as identical — no separate orientation step needed.
+    Accepts .fastq, .fastq.gz, and .fasta files.
+    """
     cmd = [
         "vsearch",
         "--fastx_uniques", fastq_path,
@@ -14,11 +19,12 @@ def run_derep(fastq_path, output_path):
         "--fastq_qmax", "60",
         "--lengthout",
         "--sizeout",
+        "--strand", "both",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"vsearch derep failed:\n{result.stderr}")
-    return result.stderr 
+    return result.stderr
 
 
 def run_fastq_stats(fastq_path, log_path):
@@ -88,7 +94,7 @@ def run_clustering(fasta_path, output_dir, method='cluster_size', identity=0.97,
     if check_derep and not has_size_annotations(fasta_path):
         raise ValueError("NO_SIZE_ANNOTATIONS")
 
-    if method not in ['cluster_size', 'cluster_fast']:
+    if method not in ['cluster_size', 'cluster_fast', 'cluster_unoise']:
         raise ValueError("method must be 'cluster_size' or 'cluster_fast'")
 
     method_name = "_size" if method == "cluster_size" else "_fast"

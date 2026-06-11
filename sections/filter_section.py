@@ -219,7 +219,7 @@ class FilterSection(QGroupBox):
         output_path = os.path.join(output_dir, output_name)
 
         min_size   = self.min_size_spin.value() if self.min_size_check.isChecked() else None
-        max_size   = self.max_size_spin.value() if self.max_size_check.isChecked() else None
+        max_size   = None  # max_size filter disabled
         min_length = self.min_len_spin.value()  if self.min_len_check.isChecked()  else None
         max_length = self.max_len_spin.value()  if self.max_len_check.isChecked()  else None
 

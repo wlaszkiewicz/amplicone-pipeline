@@ -46,9 +46,10 @@ class ClusterSection(QGroupBox):
         method_lbl.setToolTip(
             "cluster_size: sorts by abundance before clustering (recommended for amplicons)\n"
             "cluster_fast: sorts by length before clustering (faster)"
+            "cluster_unoise: denoising method that tries to correct errors instead of clustering (experimental)"
         )
         self.method_combo = QComboBox()
-        self.method_combo.addItems(["cluster_size", "cluster_fast"])
+        self.method_combo.addItems(["cluster_size", "cluster_fast", "cluster_unoise"])
         self.method_combo.setToolTip(method_lbl.toolTip())
 
         # identity
